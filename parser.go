@@ -1,16 +1,16 @@
 package main
 
 import (
+	"fmt"
 	"strconv"
-	"strings"
 )
 
 const (
 	ParsingErrorInvalidToken ParsingErrorKind = iota
+	ParsingErrorInvalidCharacterSet
 	ParsingErrorInvalidANSICodePage
+	ParsingErrorInvalidNumberConversion
 )
-
-var ()
 
 const (
 	defaultTextBufferCap = 4
@@ -35,6 +35,12 @@ type (
 
 	ParsingOptions struct {
 	}
+
+	ControlWordParsingFn func(p *Parser, c ControlWord) (Entity, error)
+)
+
+var (
+	controlWordFnLookup map[string]ControlWordParsingFn
 )
 
 func (e ParsingError) Error() string {
@@ -55,6 +61,18 @@ func (parser *Parser) consume() Token {
 	return parser.current
 }
 
+func (parser *Parser) expect(k TokenKind) error {
+	if parser.current.kind != k {
+		return ParsingError{
+			kind:  ParsingErrorInvalidToken,
+			token: parser.current,
+			msg:   fmt.Sprintf("Expected: %s, got: %s", tokenKindStr[k], tokenKindStr[parser.current.kind]),
+		}
+	}
+
+	return nil
+}
+
 func (parser *Parser) expectNext(k TokenKind) error {
 	token := parser.consume()
 
@@ -69,20 +87,26 @@ func (parser *Parser) expectNext(k TokenKind) error {
 	return nil
 }
 
-func (parser *Parser) isWordCharacterSet() CharacterSetKind {
-	token := parser.current
-	if setKind, exist := characterSetKindLookup[token.text]; exist {
-		return setKind
-	} else if strings.HasPrefix(token.text, "ansicpg") {
-		return CharacterSetANSICPG
-	}
-
-	return CharacterSetInvalid
-}
-
 func Parse(input string) ([]Entity, error) {
 	parser := Parser{
 		lexer: makeLexer(input),
+	}
+
+	controlWordFnLookup = map[string]ControlWordParsingFn{
+		// Character set words
+		"ansi":    parseCharacterSet,
+		"ansicpg": parseCharacterSet,
+		"mac":     parseCharacterSet,
+		"pc":      parseCharacterSet,
+		"pca":     parseCharacterSet,
+		"fbidis":  parseCharacterSet,
+
+		// Color words
+		"colortbl": parseColorTableValue,
+		"red":      parseColorComponent,
+		"green":    parseColorComponent,
+		"blue":     parseColorComponent,
+		"alpha":    parseColorComponent,
 	}
 
 parseDocument:
@@ -147,22 +171,56 @@ func (parser *Parser) parseControlWord() (Entity, error) {
 
 	word.wordToken = parser.current
 
-	if s := parser.isWordCharacterSet(); s != CharacterSetInvalid {
-		return parser.parseCharacterSet(word, s)
+	if fn, exist := controlWordFnLookup[parser.current.text]; exist {
+		return fn(parser, word)
 	}
 
 	return word, nil
 }
 
-func (parser *Parser) parseCharacterSet(word ControlWord, s CharacterSetKind) (CharacterSet, error) {
-	set := CharacterSet{
-		ControlWord: word,
-		setKind:     s,
+func (parser *Parser) parseText() (Text, error) {
+	text := Text{
+		leadingToken: parser.current,
+		tokens:       make([]Token, 0, defaultTextBufferCap),
+	}
+	text.tokens = append(text.tokens, parser.current)
+
+	for {
+		next := parser.peek()
+
+		if next.kind != TokenWhitespace && next.kind != TokenNumber && next.kind != TokenString {
+			break
+		}
+
+		parser.consume()
+		text.tokens = append(text.tokens, next)
 	}
 
-	if s == CharacterSetANSICPG {
-		codePageStr, _ := strings.CutPrefix(set.wordToken.text, "ansicpg")
-		codePage, err := strconv.Atoi(codePageStr)
+	return text, nil
+}
+
+func parseCharacterSet(parser *Parser, word ControlWord) (Entity, error) {
+	set := CharacterSet{
+		ControlWord: word,
+	}
+
+	var setExist bool
+	set.setKind, setExist = characterSetKindLookup[set.wordToken.text]
+
+	if !setExist {
+		return CharacterSet{}, ParsingError{
+			kind:  ParsingErrorInvalidCharacterSet,
+			token: set.wordToken,
+		}
+	}
+
+	if set.setKind == CharacterSetANSICPG {
+		err := parser.expectNext(TokenNumber)
+		if err != nil {
+			return CharacterSet{}, err
+		}
+
+		codePage, err := strconv.Atoi(parser.current.text)
 
 		if err != nil {
 			return CharacterSet{}, ParsingError{
@@ -178,23 +236,60 @@ func (parser *Parser) parseCharacterSet(word ControlWord, s CharacterSetKind) (C
 	return set, nil
 }
 
-func (parser *Parser) parseText() (Text, error) {
-	text := Text{
-		leadingToken: parser.current,
-		tokens:       make([]Token, 0, defaultTextBufferCap),
+func parseColorTableValue(parser *Parser, word ControlWord) (Entity, error) {
+	clr := ColorTableEntry{
+		ControlWord: word,
+		args:        make([]Entity, 0, 4),
 	}
-	text.tokens = append(text.tokens, parser.current)
 
+	err := parser.expectNext(TokenSemicolon)
+	if err != nil {
+		return ColorTableEntry{}, err
+	}
+
+parseArgs:
 	for {
-		next := parser.peek()
+		nextToken := parser.consume()
 
-		if next.kind != TokenString {
-			break
+		if nextToken.kind == TokenSemicolon {
+			break parseArgs
 		}
 
-		parser.consume()
-		text.tokens = append(text.tokens, next)
+		err = parser.expect(TokenBackslash)
+		if err != nil {
+			return ColorTableEntry{}, err
+		}
+
+		arg, err := parser.parseControlWord()
+		if err != nil {
+			return ColorTableEntry{}, err
+		}
+
+		clr.args = append(clr.args, arg)
 	}
 
-	return text, nil
+	return clr, nil
+}
+
+func parseColorComponent(parser *Parser, word ControlWord) (Entity, error) {
+	component := ColorComponent{
+		ControlWord: word,
+	}
+
+	err := parser.expectNext(TokenNumber)
+	if err != nil {
+		return ColorComponent{}, err
+	}
+
+	value, err := strconv.Atoi(parser.current.text)
+	if err != nil {
+		return ColorComponent{}, ParsingError{
+			token: parser.current,
+			kind:  ParsingErrorInvalidNumberConversion,
+		}
+	}
+
+	component.value = uint8(value)
+
+	return component, nil
 }

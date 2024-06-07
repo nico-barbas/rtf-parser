@@ -11,8 +11,11 @@ const (
 	TokenOpenBracket
 	TokenCloseBracket
 	TokenBackslash
+	TokenSemicolon
 
 	TokenString
+	TokenNumber
+	TokenWhitespace
 )
 
 type (
@@ -45,7 +48,7 @@ func (lexer *Lexer) NextToken() Token {
 		start: lexer.current,
 	}
 
-	lexer.skipWhitespace()
+	// lexer.skipWhitespace()
 	if lexer.isEOF() {
 		result.kind = TokenEOF
 		result.end = lexer.current
@@ -63,8 +66,24 @@ func (lexer *Lexer) NextToken() Token {
 		result.kind = TokenOpenBracket
 	case '}':
 		result.kind = TokenCloseBracket
+	case ';':
+		result.kind = TokenSemicolon
+	case ' ':
+	lexWhitespace:
+		for {
+			if lexer.isEOF() {
+				break lexWhitespace
+			}
+
+			if !isWhitespace(lexer.peek()) {
+				break lexWhitespace
+			}
+
+			lexer.advance()
+		}
+		result.kind = TokenWhitespace
 	default:
-		if isLetter(c) || isNumber(c) {
+		if isLetter(c) {
 		lexString:
 			for {
 				if lexer.isEOF() {
@@ -72,13 +91,29 @@ func (lexer *Lexer) NextToken() Token {
 				}
 
 				next := lexer.peek()
-				if !isLetter(next) && !isNumber(next) {
+				if !isLetter(next) {
 					break lexString
 				}
 
 				lexer.advance()
 			}
 			result.kind = TokenString
+		} else if isNumber(c) {
+		lexNumber:
+			for {
+				if lexer.isEOF() {
+					break lexNumber
+				}
+
+				next := lexer.peek()
+				if !isNumber(next) {
+					break lexNumber
+				}
+
+				lexer.advance()
+			}
+			result.kind = TokenNumber
+
 		} else {
 			result.kind = TokenInvalid
 		}
@@ -124,4 +159,8 @@ func isLetter(c byte) bool {
 
 func isNumber(c byte) bool {
 	return c >= '0' && c <= '9'
+}
+
+func isWhitespace(c byte) bool {
+	return c == '\t' || c == ' '
 }

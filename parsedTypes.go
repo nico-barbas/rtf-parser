@@ -5,16 +5,20 @@ const (
 	EntityKindControlGroup
 	EntityKindControlWord
 	EntityKindCharacterSet
+	EntityKindColorTableEntry
+	EntityKindColorComponent
 	EntityKindText
 )
 
 var (
 	entityKindStr = map[EntityKind]string{
-		EntityKindInvalid:      "Invalid",
-		EntityKindControlGroup: "Control Group",
-		EntityKindControlWord:  "Control Word",
-		EntityKindCharacterSet: "Character Set",
-		EntityKindText:         "Text",
+		EntityKindInvalid:         "Invalid",
+		EntityKindControlGroup:    "Control Group",
+		EntityKindControlWord:     "Control Word",
+		EntityKindCharacterSet:    "Character Set",
+		EntityKindColorTableEntry: "Color Table Entry",
+		EntityKindColorComponent:  "Color Component",
+		EntityKindText:            "Text",
 	}
 )
 
@@ -42,11 +46,12 @@ const (
 
 var (
 	characterSetKindLookup = map[string]CharacterSetKind{
-		"ansi":   CharacterSetANSI,
-		"mac":    CharacterSetMAC,
-		"pc":     CharacterSetPC,
-		"pca":    CharacterSetPCA,
-		"fbidis": CharacterSetFBIDIS,
+		"ansi":    CharacterSetANSI,
+		"ansicpg": CharacterSetANSICPG,
+		"mac":     CharacterSetMAC,
+		"pc":      CharacterSetPC,
+		"pca":     CharacterSetPCA,
+		"fbidis":  CharacterSetFBIDIS,
 	}
 
 	characterSetKindStr = map[CharacterSetKind]string{
@@ -86,6 +91,16 @@ type (
 		codePage int
 	}
 
+	ColorTableEntry struct {
+		ControlWord
+		args []Entity
+	}
+
+	ColorComponent struct {
+		ControlWord
+		value uint8
+	}
+
 	Text struct {
 		leadingToken Token
 		tokens       []Token
@@ -113,6 +128,22 @@ func (c CharacterSet) kind() EntityKind {
 }
 
 func (c CharacterSet) getToken() Token {
+	return c.token
+}
+
+func (c ColorTableEntry) kind() EntityKind {
+	return EntityKindColorTableEntry
+}
+
+func (c ColorTableEntry) getToken() Token {
+	return c.token
+}
+
+func (c ColorComponent) kind() EntityKind {
+	return EntityKindColorComponent
+}
+
+func (c ColorComponent) getToken() Token {
 	return c.token
 }
 

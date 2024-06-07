@@ -11,11 +11,11 @@ type (
 		previous    Entity
 		current     Entity
 		formatStack []int
-		colorTable  []LayoutColor
+		colorTable  []layoutColor
 		builder     strings.Builder
 	}
 
-	LayoutColor struct {
+	layoutColor struct {
 		r, g, b, a uint8
 	}
 )
@@ -34,6 +34,8 @@ func BuildLayoutHTML(ops []Entity) string {
 		layout.current = layout.popOperation()
 
 		switch e := layout.current.(type) {
+		case ColorTableEntry:
+			layout.storeColor(e)
 		case Text:
 			layout.buildTextHTML(e)
 		default:
@@ -50,4 +52,18 @@ func (layout *Layout) buildTextHTML(t Text) {
 		layout.builder.WriteString(tok.text)
 	}
 	layout.builder.WriteString("</span>")
+}
+
+func (layout *Layout) storeColor(c ColorTableEntry) {
+	clr := layoutColor{}
+
+	clr.r = c.args[0].(ColorComponent).value
+	clr.g = c.args[1].(ColorComponent).value
+	clr.b = c.args[2].(ColorComponent).value
+
+	if c.args[3] != nil {
+		clr.b = c.args[3].(ColorComponent).value
+	}
+
+	layout.colorTable = append(layout.colorTable, clr)
 }
