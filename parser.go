@@ -10,6 +10,7 @@ const (
 	ParsingErrorInvalidCharacterSet
 	ParsingErrorInvalidANSICodePage
 	ParsingErrorInvalidNumberConversion
+	ParsingErrorInvalidFormatKind
 )
 
 const (
@@ -107,6 +108,11 @@ func Parse(input string) ([]Entity, error) {
 		"green":    parseColorComponent,
 		"blue":     parseColorComponent,
 		"alpha":    parseColorComponent,
+
+		// Text format words
+		"cf": parseTextFormat,
+		"f":  parseTextFormat,
+		"fs": parseTextFormat,
 	}
 
 parseDocument:
@@ -292,4 +298,37 @@ func parseColorComponent(parser *Parser, word ControlWord) (Entity, error) {
 	component.value = uint8(value)
 
 	return component, nil
+}
+
+func parseTextFormat(parser *Parser, word ControlWord) (Entity, error) {
+	format := TextFormat{
+		ControlWord: word,
+	}
+
+	formatKind, exist := textFormatKindLookup[format.wordToken.text]
+	if !exist {
+		return TextFormat{}, ParsingError{
+			token: format.wordToken,
+			kind:  ParsingErrorInvalidFormatKind,
+		}
+	}
+
+	format.formatKind = formatKind
+
+	err := parser.expectNext(TokenNumber)
+	if err != nil {
+		return TextFormat{}, err
+	}
+
+	value, err := strconv.Atoi(parser.current.text)
+	if err != nil {
+		return TextFormat{}, ParsingError{
+			token: parser.current,
+			kind:  ParsingErrorInvalidNumberConversion,
+		}
+	}
+
+	format.arg = value
+
+	return format, nil
 }

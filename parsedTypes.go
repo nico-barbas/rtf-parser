@@ -7,6 +7,7 @@ const (
 	EntityKindCharacterSet
 	EntityKindColorTableEntry
 	EntityKindColorComponent
+	EntityKindTextFormat
 	EntityKindText
 )
 
@@ -18,6 +19,7 @@ var (
 		EntityKindCharacterSet:    "Character Set",
 		EntityKindColorTableEntry: "Color Table Entry",
 		EntityKindColorComponent:  "Color Component",
+		EntityKindTextFormat:      "Text Format",
 		EntityKindText:            "Text",
 	}
 )
@@ -64,6 +66,26 @@ var (
 	}
 )
 
+const (
+	TextFormatColor TextFormatKind = iota
+	TextFormatFontIndex
+	TextFormatFontSize
+)
+
+var (
+	textFormatKindLookup = map[string]TextFormatKind{
+		"cf": TextFormatColor,
+		"f":  TextFormatFontIndex,
+		"fs": TextFormatFontSize,
+	}
+
+	textFormatKindStr = map[TextFormatKind]string{
+		TextFormatColor:     "Color",
+		TextFormatFontIndex: "Font",
+		TextFormatFontSize:  "Font size",
+	}
+)
+
 type (
 	EntityKind int
 
@@ -74,6 +96,7 @@ type (
 
 	ControlGroupKind uint8
 	CharacterSetKind uint8
+	TextFormatKind   uint8
 
 	ControlGroup struct {
 		token     Token
@@ -99,6 +122,12 @@ type (
 	ColorComponent struct {
 		ControlWord
 		value uint8
+	}
+
+	TextFormat struct {
+		ControlWord
+		formatKind TextFormatKind
+		arg        int
 	}
 
 	Text struct {
@@ -149,6 +178,14 @@ func (c ColorComponent) getToken() Token {
 
 func (t Text) kind() EntityKind {
 	return EntityKindText
+}
+
+func (c TextFormat) kind() EntityKind {
+	return EntityKindTextFormat
+}
+
+func (c TextFormat) getToken() Token {
+	return c.token
 }
 
 func (t Text) getToken() Token {

@@ -78,6 +78,9 @@ func (d *Debugger) printOperation(op Entity) {
 	case ColorComponent:
 		fmt.Fprintf(&d.entityBuilder, "(channel: %s, value: %d)", e.wordToken.text, e.value)
 
+	case TextFormat:
+		fmt.Fprintf(&d.entityBuilder, " %s (arg: %d)", textFormatKindStr[e.formatKind], e.arg)
+
 	case Text:
 		fmt.Fprintf(&d.entityBuilder, ` (value: "`)
 		for _, t := range e.tokens {
