@@ -110,9 +110,11 @@ func Parse(input string) ([]Entity, error) {
 		"alpha":    parseColorComponent,
 
 		// Text format words
-		"cf": parseTextFormat,
-		"f":  parseTextFormat,
-		"fs": parseTextFormat,
+		"cf":   parseTextFormat,
+		"f":    parseTextFormat,
+		"fs":   parseTextFormat,
+		"pard": parseTextFormatNoArg,
+		"par":  parseTextFormatNoArg,
 	}
 
 parseDocument:
@@ -330,5 +332,23 @@ func parseTextFormat(parser *Parser, word ControlWord) (Entity, error) {
 
 	format.arg = value
 
+	return format, nil
+}
+
+func parseTextFormatNoArg(parser *Parser, word ControlWord) (Entity, error) {
+	format := TextFormat{
+		ControlWord: word,
+	}
+
+	formatKind, exist := textFormatKindLookup[format.wordToken.text]
+	if !exist {
+		return TextFormat{}, ParsingError{
+			token: format.wordToken,
+			kind:  ParsingErrorInvalidFormatKind,
+		}
+	}
+
+	format.formatKind = formatKind
+	format.arg = -1
 	return format, nil
 }

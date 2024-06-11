@@ -70,6 +70,8 @@ const (
 	TextFormatColor TextFormatKind = iota
 	TextFormatFontIndex
 	TextFormatFontSize
+	TextFormatParagraphClear
+	TextFormatParagraphEnd
 )
 
 var (
@@ -77,12 +79,17 @@ var (
 		"cf": TextFormatColor,
 		"f":  TextFormatFontIndex,
 		"fs": TextFormatFontSize,
+
+		"pard": TextFormatParagraphClear,
+		"par":  TextFormatParagraphEnd,
 	}
 
 	textFormatKindStr = map[TextFormatKind]string{
-		TextFormatColor:     "Color",
-		TextFormatFontIndex: "Font",
-		TextFormatFontSize:  "Font size",
+		TextFormatColor:          "Color",
+		TextFormatFontIndex:      "Font",
+		TextFormatFontSize:       "Font size",
+		TextFormatParagraphClear: "Paragraph Clear",
+		TextFormatParagraphEnd:   "Paragraph End",
 	}
 )
 

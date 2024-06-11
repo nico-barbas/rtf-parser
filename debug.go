@@ -79,7 +79,11 @@ func (d *Debugger) printOperation(op Entity) {
 		fmt.Fprintf(&d.entityBuilder, "(channel: %s, value: %d)", e.wordToken.text, e.value)
 
 	case TextFormat:
-		fmt.Fprintf(&d.entityBuilder, " %s (arg: %d)", textFormatKindStr[e.formatKind], e.arg)
+		if e.arg != -1 {
+			fmt.Fprintf(&d.entityBuilder, " %s (arg: %d)", textFormatKindStr[e.formatKind], e.arg)
+		} else {
+			fmt.Fprintf(&d.entityBuilder, " %s", textFormatKindStr[e.formatKind])
+		}
 
 	case Text:
 		fmt.Fprintf(&d.entityBuilder, ` (value: "`)

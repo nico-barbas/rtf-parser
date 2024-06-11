@@ -10,32 +10,24 @@ type (
 		ops               []Entity
 		previous          Entity
 		current           Entity
-		formatStack       []layoutFormat
+		formatStack       []layoutFormatOp
 		formatStackFrames []int
-		formatMask        layoutFormatMask
 		colorTable        []layoutColor
-		builder           strings.Builder
+
+		// Output
+		roots       []LayoutNode
+		currentNode *LayoutParagraph
+		builder     strings.Builder
 	}
-
-	layoutFormat interface{}
-
-	layoutFormatMask uint64
-
-	layoutColor struct {
-		r, g, b, a uint8
-	}
-
-	layoutFontIndex int
-
-	layoutFontSize int
 )
 
-func BuildLayoutHTML(ops []Entity) string {
+func BuildLayout(ops []Entity) []LayoutNode {
 	layout := Layout{ops: slices.Clone(ops)}
 
-	for len(layout.ops) > 0 {
+	for _, op := range layout.ops {
 		layout.previous = layout.current
-		layout.current = layout.popOperation()
+		layout.current = op
+		// layout.current = layout.popOperation()
 
 		switch e := layout.current.(type) {
 		case ControlGroup:
@@ -48,20 +40,21 @@ func BuildLayoutHTML(ops []Entity) string {
 		case ColorTableEntry:
 			layout.storeColor(e)
 		case TextFormat:
-			layout.applyFormat(e)
+			layout.processFormat(e)
 		case Text:
-			layout.buildTextHTML(e)
+			text := layout.buildText(e)
+			if layout.currentNode != nil {
+				layout.currentNode.children = append(layout.currentNode.children, text)
+			}
 		default:
 		}
 	}
 
-	return layout.builder.String()
+	return layout.roots
 }
 
-func (layout *Layout) popOperation() Entity {
-	op := layout.ops[len(layout.ops)-1]
-	layout.ops = layout.ops[:len(layout.ops)-1]
-	return op
+func (layout *Layout) pushFormat(format layoutFormatOp) {
+	layout.formatStack = append(layout.formatStack, format)
 }
 
 func (layout *Layout) pushFormatStackFrame() {
@@ -69,6 +62,10 @@ func (layout *Layout) pushFormatStackFrame() {
 }
 
 func (layout *Layout) popFormatStackFrame() {
+	if len(layout.formatStackFrames) == 0 {
+		return
+	}
+
 	last := len(layout.formatStackFrames) - 1
 	stackIdx := layout.formatStackFrames[last]
 	layout.formatStackFrames = layout.formatStackFrames[:last]
@@ -88,25 +85,64 @@ func (layout *Layout) storeColor(c ColorTableEntry) {
 	clr.b = c.args[2].(ColorComponent).value
 
 	if len(c.args) == 4 {
-		clr.b = c.args[3].(ColorComponent).value
+		clr.a = c.args[3].(ColorComponent).value
+	} else {
+		clr.a = 255
 	}
 
 	layout.colorTable = append(layout.colorTable, clr)
 }
 
-func (layout *Layout) applyFormat(t TextFormat) {
+func (layout *Layout) processFormat(t TextFormat) {
 	switch t.formatKind {
 	case TextFormatColor:
+		layout.pushFormat(layout.colorTable[t.arg-1])
 	case TextFormatFontIndex:
 	case TextFormatFontSize:
+		layout.pushFormat(layoutFontSize(t.arg))
+
+	case TextFormatParagraphClear:
+		layout.clearFormatStack()
+		layout.pushFormatStackFrame()
+		p := &LayoutParagraph{}
+
+		if layout.currentNode != nil {
+			layout.currentNode.children = append(layout.currentNode.children, p)
+		} else {
+			layout.roots = append(layout.roots, p)
+		}
+		layout.currentNode = p
+
+	case TextFormatParagraphEnd:
+		layout.currentNode.format = layout.buildFormat()
+		layout.currentNode = nil
 	}
 }
 
-// TODO(nb): Absolutely disgusting way to stich it
-func (layout *Layout) buildTextHTML(t Text) {
-	layout.builder.WriteString("<span>")
-	for _, tok := range t.tokens {
-		layout.builder.WriteString(tok.text)
+func (layout *Layout) buildFormat() layoutFormat {
+	format := layoutFormat{}
+
+	// Walk the format stack backward and skip any format that is already set in the bitmask
+	for i := len(layout.formatStack) - 1; i >= 0; i -= 1 {
+		f := layout.formatStack[i]
+		if format[f.kind()] != nil {
+			continue
+		}
+
+		format[f.kind()] = f
 	}
-	layout.builder.WriteString("</span>")
+
+	return format
+}
+
+func (layout *Layout) buildText(t Text) *LayoutText {
+	layout.builder.Reset()
+
+	for _, token := range t.tokens {
+		layout.builder.WriteString(token.text)
+	}
+
+	return &LayoutText{
+		value: layout.builder.String(),
+	}
 }
