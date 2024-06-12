@@ -7,7 +7,9 @@ import (
 )
 
 func main() {
-	input, err := os.ReadFile("./test.rtf")
+	filename := "regular"
+
+	input, err := os.ReadFile(fmt.Sprintf("./input/%s.rtf", filename))
 	if err != nil {
 		log.Fatal(err)
 		return
@@ -26,7 +28,7 @@ func main() {
 		output := OutputHTML(layout, BuilderOptions{prettyOutput: false})
 		fmt.Println(output)
 
-		outputFile, err := os.OpenFile("./output.html", os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
+		outputFile, err := os.OpenFile(fmt.Sprintf("./output/%s.html", filename), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0644)
 		if err != nil {
 			log.Fatal(err)
 		}

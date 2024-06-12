@@ -58,14 +58,20 @@ type (
 		kind() layoutFormatKind
 	}
 
+	layoutFont struct {
+		name string
+	}
+
 	layoutColor struct {
 		r, g, b, a uint8
 	}
 
-	layoutFontIndex int
-
 	layoutFontSize int
 )
+
+func (f layoutFont) kind() layoutFormatKind {
+	return layoutFormatFont
+}
 
 func (c layoutColor) kind() layoutFormatKind {
 	return layoutFormatColor

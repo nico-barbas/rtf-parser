@@ -12,6 +12,7 @@ type (
 		current           Entity
 		formatStack       []layoutFormatOp
 		formatStackFrames []int
+		fontTable         map[int]layoutFont
 		colorTable        []layoutColor
 
 		// Output
@@ -22,7 +23,7 @@ type (
 )
 
 func BuildLayout(ops []Entity) []LayoutNode {
-	layout := Layout{ops: slices.Clone(ops)}
+	layout := Layout{ops: slices.Clone(ops), fontTable: map[int]layoutFont{}}
 
 	for _, op := range layout.ops {
 		layout.previous = layout.current
@@ -37,6 +38,8 @@ func BuildLayout(ops []Entity) []LayoutNode {
 			case ControlGroupKindEnd:
 				layout.popFormatStackFrame()
 			}
+		case FontTableEntry:
+			layout.storeFont(e)
 		case ColorTableEntry:
 			layout.storeColor(e)
 		case TextFormat:
@@ -77,6 +80,12 @@ func (layout *Layout) clearFormatStack() {
 	layout.formatStackFrames = layout.formatStackFrames[:0]
 }
 
+func (layout *Layout) storeFont(f FontTableEntry) {
+	layout.fontTable[f.index] = layoutFont{
+		name: f.fontNameToken.text,
+	}
+}
+
 func (layout *Layout) storeColor(c ColorTableEntry) {
 	clr := layoutColor{}
 
@@ -98,6 +107,7 @@ func (layout *Layout) processFormat(t TextFormat) {
 	case TextFormatColor:
 		layout.pushFormat(layout.colorTable[t.arg-1])
 	case TextFormatFontIndex:
+		layout.pushFormat(layout.fontTable[t.arg])
 	case TextFormatFontSize:
 		layout.pushFormat(layoutFontSize(t.arg))
 

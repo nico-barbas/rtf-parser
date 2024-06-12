@@ -102,8 +102,11 @@ func Parse(input string) ([]Entity, error) {
 		"pca":     parseCharacterSet,
 		"fbidis":  parseCharacterSet,
 
+		// Font words
+		"fonttbl": parseFontTableEntry,
+
 		// Color words
-		"colortbl": parseColorTableValue,
+		"colortbl": parseColorTableEntry,
 		"red":      parseColorComponent,
 		"green":    parseColorComponent,
 		"blue":     parseColorComponent,
@@ -244,7 +247,89 @@ func parseCharacterSet(parser *Parser, word ControlWord) (Entity, error) {
 	return set, nil
 }
 
-func parseColorTableValue(parser *Parser, word ControlWord) (Entity, error) {
+func parseFontTableEntry(parser *Parser, word ControlWord) (Entity, error) {
+	fnt := FontTableEntry{
+		ControlWord: word,
+	}
+
+	err := parser.expectNext(TokenOpenBracket)
+	if err != nil {
+		return FontTableEntry{}, err
+	}
+
+parseArgs:
+	for {
+		nextToken := parser.consume()
+
+		switch nextToken.kind {
+		case TokenSemicolon:
+			break parseArgs
+		case TokenString:
+			fnt.fontNameToken = nextToken
+			fallthrough
+		case TokenWhitespace:
+			continue
+		}
+
+		err = parser.expect(TokenBackslash)
+		if err != nil {
+			return FontTableEntry{}, err
+		}
+
+		err = parser.expectNext(TokenString)
+		if err != nil {
+			return FontTableEntry{}, err
+		}
+
+		switch parser.current.text {
+		case "f":
+			err = parser.expectNext(TokenNumber)
+			if err != nil {
+				return FontTableEntry{}, err
+			}
+
+			fnt.index, err = strconv.Atoi(parser.current.text)
+			if err != nil {
+				return FontTableEntry{}, ParsingError{
+					token: parser.current,
+					kind:  ParsingErrorInvalidNumberConversion,
+				}
+			}
+
+		case "fnil":
+			fnt.defaultFallback = true
+
+		case "fcharset":
+			err = parser.expectNext(TokenNumber)
+			if err != nil {
+				return FontTableEntry{}, err
+			}
+
+			fnt.charset, err = strconv.Atoi(parser.current.text)
+			if err != nil {
+				return FontTableEntry{}, ParsingError{
+					token: parser.current,
+					kind:  ParsingErrorInvalidNumberConversion,
+				}
+			}
+
+		default:
+			return FontTableEntry{}, ParsingError{
+				token: parser.current,
+				kind:  ParsingErrorInvalidToken,
+			}
+		}
+	}
+
+	err = parser.expectNext(TokenCloseBracket)
+	if err != nil {
+		return FontTableEntry{}, err
+	}
+
+	return fnt, nil
+}
+
+func parseColorTableEntry(parser *Parser, word ControlWord) (Entity, error) {
 	clr := ColorTableEntry{
 		ControlWord: word,
 		args:        make([]Entity, 0, 4),

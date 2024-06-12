@@ -5,6 +5,7 @@ const (
 	EntityKindControlGroup
 	EntityKindControlWord
 	EntityKindCharacterSet
+	EntityKindFontTableEntry
 	EntityKindColorTableEntry
 	EntityKindColorComponent
 	EntityKindTextFormat
@@ -17,6 +18,7 @@ var (
 		EntityKindControlGroup:    "Control Group",
 		EntityKindControlWord:     "Control Word",
 		EntityKindCharacterSet:    "Character Set",
+		EntityKindFontTableEntry:  "Font Table Entry",
 		EntityKindColorTableEntry: "Color Table Entry",
 		EntityKindColorComponent:  "Color Component",
 		EntityKindTextFormat:      "Text Format",
@@ -121,6 +123,14 @@ type (
 		codePage int
 	}
 
+	FontTableEntry struct {
+		ControlWord
+		fontNameToken   Token
+		index           int
+		charset         int
+		defaultFallback bool
+	}
+
 	ColorTableEntry struct {
 		ControlWord
 		args []Entity
@@ -165,6 +175,14 @@ func (c CharacterSet) kind() EntityKind {
 
 func (c CharacterSet) getToken() Token {
 	return c.token
+}
+
+func (f FontTableEntry) kind() EntityKind {
+	return EntityKindFontTableEntry
+}
+
+func (f FontTableEntry) getToken() Token {
+	return f.token
 }
 
 func (c ColorTableEntry) kind() EntityKind {

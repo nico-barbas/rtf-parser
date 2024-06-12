@@ -75,6 +75,16 @@ func (d *Debugger) printOperation(op Entity) {
 			d.printOperation(arg)
 		}
 
+	case FontTableEntry:
+		fmt.Fprintf(
+			&d.entityBuilder,
+			"(name: %s, index: %d, charset: %d, default fallback: %t)",
+			e.fontNameToken.text,
+			e.index,
+			e.charset,
+			e.defaultFallback,
+		)
+
 	case ColorComponent:
 		fmt.Fprintf(&d.entityBuilder, "(channel: %s, value: %d)", e.wordToken.text, e.value)
 

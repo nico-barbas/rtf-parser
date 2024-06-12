@@ -68,6 +68,8 @@ func (builder *Builder) outputStyleCSS(format layoutFormat) string {
 		}
 
 		switch _f := f.(type) {
+		case layoutFont:
+			fmt.Fprintf(&builder.styleBuf, "font-family: %s;", _f.name)
 		case layoutColor:
 			fmt.Fprintf(&builder.styleBuf, "color: rgba(%d, %d, %d, %.1f);", _f.r, _f.g, _f.b, float64(_f.a)/255)
 		case layoutFontSize:
