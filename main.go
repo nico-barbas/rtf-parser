@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	filename := "regular"
+	filename := "simple"
 
 	input, err := os.ReadFile(fmt.Sprintf("./input/%s.rtf", filename))
 	if err != nil {
@@ -20,7 +20,7 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	} else {
-		PrettyPrintEntities(ops)
+		DebugOpStream(ops)
 
 		layout := BuildLayout(ops)
 		fmt.Printf("%#v\n", layout)

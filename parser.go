@@ -106,7 +106,7 @@ func Parse(input string) ([]Entity, error) {
 		"fonttbl": parseFontTableEntry,
 
 		// Color words
-		"colortbl": parseColorTableEntry,
+		"colortbl": parseColorTable,
 		"red":      parseColorComponent,
 		"green":    parseColorComponent,
 		"blue":     parseColorComponent,
@@ -329,39 +329,30 @@ parseArgs:
 	return fnt, nil
 }
 
-func parseColorTableEntry(parser *Parser, word ControlWord) (Entity, error) {
-	clr := ColorTableEntry{
+func parseColorTable(parser *Parser, word ControlWord) (Entity, error) {
+	table := ColorTable{
 		ControlWord: word,
-		args:        make([]Entity, 0, 4),
 	}
 
-	err := parser.expectNext(TokenSemicolon)
-	if err != nil {
-		return ColorTableEntry{}, err
-	}
-
-parseArgs:
+parseColors:
 	for {
-		nextToken := parser.consume()
+		nextToken := parser.peek()
 
-		if nextToken.kind == TokenSemicolon {
-			break parseArgs
+		switch nextToken.kind {
+		case TokenCloseBracket:
+			break parseColors
+		case TokenSemicolon:
+			parser.consume()
+			clr, err := parseColorTableEntry(parser)
+			if err != nil {
+				return ColorTable{}, err
+			}
+
+			table.colors = append(table.colors, clr)
 		}
-
-		err = parser.expect(TokenBackslash)
-		if err != nil {
-			return ColorTableEntry{}, err
-		}
-
-		arg, err := parser.parseControlWord()
-		if err != nil {
-			return ColorTableEntry{}, err
-		}
-
-		clr.args = append(clr.args, arg)
 	}
 
-	return clr, nil
+	return table, nil
 }
 
 func parseColorComponent(parser *Parser, word ControlWord) (Entity, error) {
@@ -436,4 +427,34 @@ func parseTextFormatNoArg(parser *Parser, word ControlWord) (Entity, error) {
 	format.formatKind = formatKind
 	format.arg = -1
 	return format, nil
+}
+
+func parseColorTableEntry(parser *Parser) (Entity, error) {
+	clr := ColorTableEntry{
+		startToken: parser.current,
+	}
+
+parseComponents:
+	for i := 0; i < 4; i += 1 {
+		nextToken := parser.consume()
+
+		if nextToken.kind == TokenSemicolon {
+			clr.endToken = nextToken
+			break parseComponents
+		}
+
+		err := parser.expect(TokenBackslash)
+		if err != nil {
+			return ColorTable{}, err
+		}
+
+		channel, err := parser.parseControlWord()
+		if err != nil {
+			return ColorTable{}, err
+		}
+
+		clr.channels[i] = channel
+	}
+
+	return clr, nil
 }

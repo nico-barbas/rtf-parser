@@ -6,6 +6,7 @@ const (
 	EntityKindControlWord
 	EntityKindCharacterSet
 	EntityKindFontTableEntry
+	EntityKindColorTable
 	EntityKindColorTableEntry
 	EntityKindColorComponent
 	EntityKindTextFormat
@@ -14,15 +15,15 @@ const (
 
 var (
 	entityKindStr = map[EntityKind]string{
-		EntityKindInvalid:         "Invalid",
-		EntityKindControlGroup:    "Control Group",
-		EntityKindControlWord:     "Control Word",
-		EntityKindCharacterSet:    "Character Set",
-		EntityKindFontTableEntry:  "Font Table Entry",
-		EntityKindColorTableEntry: "Color Table Entry",
-		EntityKindColorComponent:  "Color Component",
-		EntityKindTextFormat:      "Text Format",
-		EntityKindText:            "Text",
+		EntityKindInvalid:        "Invalid",
+		EntityKindControlGroup:   "Control Group",
+		EntityKindControlWord:    "Control Word",
+		EntityKindCharacterSet:   "Character Set",
+		EntityKindFontTableEntry: "Font Table Entry",
+		EntityKindColorTable:     "Color Table",
+		EntityKindColorComponent: "Color Component",
+		EntityKindTextFormat:     "Text Format",
+		EntityKindText:           "Text",
 	}
 )
 
@@ -131,9 +132,15 @@ type (
 		defaultFallback bool
 	}
 
-	ColorTableEntry struct {
+	ColorTable struct {
 		ControlWord
-		args []Entity
+		colors []Entity
+	}
+
+	ColorTableEntry struct {
+		startToken Token
+		endToken   Token
+		channels   [4]Entity
 	}
 
 	ColorComponent struct {
@@ -185,12 +192,20 @@ func (f FontTableEntry) getToken() Token {
 	return f.token
 }
 
+func (c ColorTable) kind() EntityKind {
+	return EntityKindColorTable
+}
+
+func (c ColorTable) getToken() Token {
+	return c.token
+}
+
 func (c ColorTableEntry) kind() EntityKind {
 	return EntityKindColorTableEntry
 }
 
 func (c ColorTableEntry) getToken() Token {
-	return c.token
+	return c.startToken
 }
 
 func (c ColorComponent) kind() EntityKind {

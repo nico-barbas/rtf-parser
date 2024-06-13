@@ -40,8 +40,10 @@ func BuildLayout(ops []Entity) []LayoutNode {
 			}
 		case FontTableEntry:
 			layout.storeFont(e)
-		case ColorTableEntry:
-			layout.storeColor(e)
+		case ColorTable:
+			for _, clr := range e.colors {
+				layout.storeColor(clr.(ColorTableEntry))
+			}
 		case TextFormat:
 			layout.processFormat(e)
 		case Text:
@@ -89,12 +91,12 @@ func (layout *Layout) storeFont(f FontTableEntry) {
 func (layout *Layout) storeColor(c ColorTableEntry) {
 	clr := layoutColor{}
 
-	clr.r = c.args[0].(ColorComponent).value
-	clr.g = c.args[1].(ColorComponent).value
-	clr.b = c.args[2].(ColorComponent).value
+	clr.r = c.channels[0].(ColorComponent).value
+	clr.g = c.channels[1].(ColorComponent).value
+	clr.b = c.channels[2].(ColorComponent).value
 
-	if len(c.args) == 4 {
-		clr.a = c.args[3].(ColorComponent).value
+	if c.channels[3] != nil {
+		clr.a = c.channels[3].(ColorComponent).value
 	} else {
 		clr.a = 255
 	}
