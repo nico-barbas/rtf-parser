@@ -1,10 +1,13 @@
 package main
 
+import "strings"
+
 const (
 	EntityKindInvalid EntityKind = iota
 	EntityKindControlGroup
 	EntityKindControlWord
 	EntityKindCharacterSet
+	EntityKindFontTable
 	EntityKindFontTableEntry
 	EntityKindColorTable
 	EntityKindColorTableEntry
@@ -19,6 +22,7 @@ var (
 		EntityKindControlGroup:   "Control Group",
 		EntityKindControlWord:    "Control Word",
 		EntityKindCharacterSet:   "Character Set",
+		EntityKindFontTable:      "Font Table",
 		EntityKindFontTableEntry: "Font Table Entry",
 		EntityKindColorTable:     "Color Table",
 		EntityKindColorComponent: "Color Component",
@@ -73,6 +77,12 @@ const (
 	TextFormatColor TextFormatKind = iota
 	TextFormatFontIndex
 	TextFormatFontSize
+	TextFormatFontWeightBold
+	TextFormatAlignCenter
+	TextFormatAlignJustify
+	TextFormatAlignRight
+	TextFormatLeftIndent
+	TextFormatFirstIndent
 	TextFormatParagraphClear
 	TextFormatParagraphEnd
 )
@@ -82,6 +92,14 @@ var (
 		"cf": TextFormatColor,
 		"f":  TextFormatFontIndex,
 		"fs": TextFormatFontSize,
+		"b":  TextFormatFontWeightBold,
+
+		"qc": TextFormatAlignCenter,
+		"qj": TextFormatAlignJustify,
+		"qr": TextFormatAlignRight,
+
+		"li": TextFormatLeftIndent,
+		"fi": TextFormatFirstIndent,
 
 		"pard": TextFormatParagraphClear,
 		"par":  TextFormatParagraphEnd,
@@ -90,7 +108,13 @@ var (
 	textFormatKindStr = map[TextFormatKind]string{
 		TextFormatColor:          "Color",
 		TextFormatFontIndex:      "Font",
-		TextFormatFontSize:       "Font size",
+		TextFormatFontSize:       "Font Size",
+		TextFormatFontWeightBold: "Font Bold",
+		TextFormatAlignCenter:    "Align Center",
+		TextFormatAlignJustify:   "Align Justify",
+		TextFormatAlignRight:     "Align Right",
+		TextFormatLeftIndent:     "Left Indent",
+		TextFormatFirstIndent:    "First Indent",
 		TextFormatParagraphClear: "Paragraph Clear",
 		TextFormatParagraphEnd:   "Paragraph End",
 	}
@@ -124,9 +148,14 @@ type (
 		codePage int
 	}
 
-	FontTableEntry struct {
+	FontTable struct {
 		ControlWord
-		fontNameToken   Token
+		fonts []Entity
+	}
+
+	FontTableEntry struct {
+		startToken      Token
+		fontName        Text
 		index           int
 		charset         int
 		defaultFallback bool
@@ -139,7 +168,6 @@ type (
 
 	ColorTableEntry struct {
 		startToken Token
-		endToken   Token
 		channels   [4]Entity
 	}
 
@@ -184,12 +212,20 @@ func (c CharacterSet) getToken() Token {
 	return c.token
 }
 
+func (f FontTable) kind() EntityKind {
+	return EntityKindFontTable
+}
+
+func (f FontTable) getToken() Token {
+	return f.token
+}
+
 func (f FontTableEntry) kind() EntityKind {
 	return EntityKindFontTableEntry
 }
 
 func (f FontTableEntry) getToken() Token {
-	return f.token
+	return f.startToken
 }
 
 func (c ColorTable) kind() EntityKind {
@@ -230,4 +266,19 @@ func (c TextFormat) getToken() Token {
 
 func (t Text) getToken() Token {
 	return t.leadingToken
+}
+
+func (t Text) toString() string {
+	str := ""
+	for _, token := range t.tokens {
+		str += token.text
+	}
+
+	return str
+}
+
+func (t Text) writeToString(builder *strings.Builder) {
+	for _, token := range t.tokens {
+		builder.WriteString(token.text)
+	}
 }

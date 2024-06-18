@@ -12,6 +12,7 @@ const (
 	TokenCloseBracket
 	TokenBackslash
 	TokenSemicolon
+	TokenDash
 
 	TokenString
 	TokenNumber
@@ -68,6 +69,8 @@ func (lexer *Lexer) NextToken() Token {
 		result.kind = TokenCloseBracket
 	case ';':
 		result.kind = TokenSemicolon
+	case '-':
+		result.kind = TokenDash
 	case ' ':
 	lexWhitespace:
 		for {

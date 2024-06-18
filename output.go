@@ -52,7 +52,7 @@ func (builder *Builder) openHTMLTag(tag string, style string) {
 }
 
 func (builder *Builder) closeHTMLTag(tag string) {
-	fmt.Fprintf(&builder.buf, "<%s>", tag)
+	fmt.Fprintf(&builder.buf, "</%s>", tag)
 	if builder.opt.prettyOutput {
 		builder.buf.WriteByte('\n')
 	}
@@ -69,12 +69,26 @@ func (builder *Builder) outputStyleCSS(format layoutFormat) string {
 
 		switch _f := f.(type) {
 		case layoutFont:
-			fmt.Fprintf(&builder.styleBuf, "font-family: %s;", _f.name)
+			fmt.Fprintf(&builder.styleBuf, "font-family: %s", _f.name)
 		case layoutColor:
-			fmt.Fprintf(&builder.styleBuf, "color: rgba(%d, %d, %d, %.1f);", _f.r, _f.g, _f.b, float64(_f.a)/255)
+			fmt.Fprintf(&builder.styleBuf, "color: rgba(%d, %d, %d, %.1f)", _f.r, _f.g, _f.b, float64(_f.a)/255)
 		case layoutFontSize:
-			fmt.Fprintf(&builder.styleBuf, "font-size: %d;", _f)
+			fmt.Fprintf(&builder.styleBuf, "font-size: %d", _f)
+		case layoutFontWeight:
+			fmt.Fprintf(&builder.styleBuf, "font-weight: %s", layoutFontWeightStr[_f])
+		case layoutTextAlign:
+			fmt.Fprintf(&builder.styleBuf, "text-align: %s", layoutTextAlignStr[_f])
+		case layoutTextIndent:
+			indentValue := ConvertUnits(_f.value, _f.unit, MeasuringUnitEm)
+			if _f.firstLineOffset != 0 {
+				firstLineIndentValue := ConvertUnits(_f.firstLineOffset, _f.unit, MeasuringUnitEm)
+				fmt.Fprintf(&builder.styleBuf, "padding-left: %dem;", indentValue)
+				fmt.Fprintf(&builder.styleBuf, "text-indent: %dem", firstLineIndentValue)
+			} else {
+				fmt.Fprintf(&builder.styleBuf, "text-indent: %dem", indentValue)
+			}
 		}
+		builder.styleBuf.WriteByte(';')
 	}
 	builder.styleBuf.WriteString("\"")
 

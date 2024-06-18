@@ -19,11 +19,12 @@ const (
 
 type (
 	Parser struct {
-		opt      ParsingOptions
-		ops      []Entity
-		lexer    Lexer
-		previous Token
-		current  Token
+		opt              ParsingOptions
+		ops              []Entity
+		lexer            Lexer
+		previous         Token
+		current          Token
+		textEscapeTokens []TokenKind
 	}
 
 	ParsingErrorKind int
@@ -41,7 +42,9 @@ type (
 )
 
 var (
-	controlWordFnLookup map[string]ControlWordParsingFn
+	controlWordFnLookup     map[string]ControlWordParsingFn
+	defaultTextEscapeTokens = []TokenKind{TokenOpenBracket, TokenCloseBracket, TokenBackslash}
+	fontTextEscapeTokens    = []TokenKind{TokenOpenBracket, TokenCloseBracket, TokenBackslash, TokenSemicolon}
 )
 
 func (e ParsingError) Error() string {
@@ -50,6 +53,15 @@ func (e ParsingError) Error() string {
 
 func (parser *Parser) peek() Token {
 	idx := parser.lexer.current
+	token := parser.lexer.NextToken()
+	parser.lexer.current = idx
+
+	return token
+}
+
+func (parser *Parser) peekNext() Token {
+	idx := parser.lexer.current
+	parser.lexer.NextToken()
 	token := parser.lexer.NextToken()
 	parser.lexer.current = idx
 
@@ -90,7 +102,8 @@ func (parser *Parser) expectNext(k TokenKind) error {
 
 func Parse(input string) ([]Entity, error) {
 	parser := Parser{
-		lexer: makeLexer(input),
+		lexer:            makeLexer(input),
+		textEscapeTokens: defaultTextEscapeTokens,
 	}
 
 	controlWordFnLookup = map[string]ControlWordParsingFn{
@@ -103,7 +116,7 @@ func Parse(input string) ([]Entity, error) {
 		"fbidis":  parseCharacterSet,
 
 		// Font words
-		"fonttbl": parseFontTableEntry,
+		"fonttbl": parseFontTable,
 
 		// Color words
 		"colortbl": parseColorTable,
@@ -116,8 +129,14 @@ func Parse(input string) ([]Entity, error) {
 		"cf":   parseTextFormat,
 		"f":    parseTextFormat,
 		"fs":   parseTextFormat,
+		"li":   parseTextFormat,
+		"fi":   parseTextFormat,
 		"pard": parseTextFormatNoArg,
 		"par":  parseTextFormatNoArg,
+		"b":    parseTextFormatNoArg,
+		"qc":   parseTextFormatNoArg,
+		"qj":   parseTextFormatNoArg,
+		"qr":   parseTextFormatNoArg,
 	}
 
 parseDocument:
@@ -196,11 +215,14 @@ func (parser *Parser) parseText() (Text, error) {
 	}
 	text.tokens = append(text.tokens, parser.current)
 
+parseSequence:
 	for {
 		next := parser.peek()
 
-		if next.kind != TokenWhitespace && next.kind != TokenNumber && next.kind != TokenString {
-			break
+		for _, escape := range parser.textEscapeTokens {
+			if next.kind == escape {
+				break parseSequence
+			}
 		}
 
 		parser.consume()
@@ -247,15 +269,41 @@ func parseCharacterSet(parser *Parser, word ControlWord) (Entity, error) {
 	return set, nil
 }
 
-func parseFontTableEntry(parser *Parser, word ControlWord) (Entity, error) {
-	fnt := FontTableEntry{
+func parseFontTable(parser *Parser, word ControlWord) (Entity, error) {
+	tbl := FontTable{
 		ControlWord: word,
 	}
 
-	err := parser.expectNext(TokenOpenBracket)
+parseFonts:
+	for {
+		nextToken := parser.peek()
+
+		if nextToken.kind != TokenOpenBracket {
+			break parseFonts
+		}
+
+		parser.consume()
+
+		f, err := parseFontTableEntry(parser)
+		if err != nil {
+			return FontTable{}, err
+		}
+
+		tbl.fonts = append(tbl.fonts, f)
+	}
+
+	return tbl, nil
+}
+
+func parseFontTableEntry(parser *Parser) (Entity, error) {
+	fnt := FontTableEntry{}
+
+	err := parser.expect(TokenOpenBracket)
 	if err != nil {
 		return FontTableEntry{}, err
 	}
+
+	parser.textEscapeTokens = fontTextEscapeTokens
 
 parseArgs:
 	for {
@@ -265,7 +313,10 @@ parseArgs:
 		case TokenSemicolon:
 			break parseArgs
 		case TokenString:
-			fnt.fontNameToken = nextToken
+			fnt.fontName, err = parser.parseText()
+			if err != nil {
+				return FontTableEntry{}, err
+			}
 			fallthrough
 		case TokenWhitespace:
 			continue
@@ -325,6 +376,7 @@ parseArgs:
 	if err != nil {
 		return FontTableEntry{}, err
 	}
+	parser.textEscapeTokens = defaultTextEscapeTokens
 
 	return fnt, nil
 }
@@ -343,12 +395,14 @@ parseColors:
 			break parseColors
 		case TokenSemicolon:
 			parser.consume()
-			clr, err := parseColorTableEntry(parser)
-			if err != nil {
-				return ColorTable{}, err
-			}
+			if parser.peek().kind != TokenCloseBracket {
+				clr, err := parseColorTableEntry(parser)
+				if err != nil {
+					return ColorTable{}, err
+				}
 
-			table.colors = append(table.colors, clr)
+				table.colors = append(table.colors, clr)
+			}
 		}
 	}
 
@@ -393,7 +447,14 @@ func parseTextFormat(parser *Parser, word ControlWord) (Entity, error) {
 
 	format.formatKind = formatKind
 
-	err := parser.expectNext(TokenNumber)
+	nextToken := parser.consume()
+	negateNumber := false
+	if nextToken.kind == TokenDash {
+		negateNumber = true
+		parser.consume()
+	}
+
+	err := parser.expect(TokenNumber)
 	if err != nil {
 		return TextFormat{}, err
 	}
@@ -407,6 +468,10 @@ func parseTextFormat(parser *Parser, word ControlWord) (Entity, error) {
 	}
 
 	format.arg = value
+
+	if negateNumber {
+		format.arg = -format.arg
+	}
 
 	return format, nil
 }
@@ -436,14 +501,13 @@ func parseColorTableEntry(parser *Parser) (Entity, error) {
 
 parseComponents:
 	for i := 0; i < 4; i += 1 {
-		nextToken := parser.consume()
+		nextToken := parser.peek()
 
 		if nextToken.kind == TokenSemicolon {
-			clr.endToken = nextToken
 			break parseComponents
 		}
 
-		err := parser.expect(TokenBackslash)
+		err := parser.expectNext(TokenBackslash)
 		if err != nil {
 			return ColorTable{}, err
 		}

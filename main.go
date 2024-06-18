@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	filename := "simple"
+	filename := "regular"
 
 	input, err := os.ReadFile(fmt.Sprintf("./input/%s.rtf", filename))
 	if err != nil {

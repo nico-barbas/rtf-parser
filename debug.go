@@ -75,6 +75,15 @@ func (d *OpDebugger) buildInfoIndentation() {
 				indent -= 1
 			}
 
+		case FontTable:
+			for i, fnt := range e.fonts {
+				d.output = append(d.output, debugInfo{
+					op:        fnt,
+					indent:    d.output[idx].indent + 1,
+					userIndex: i,
+				})
+			}
+
 		case ColorTable:
 			for i, clr := range e.colors {
 				d.output = append(d.output, debugInfo{
@@ -120,10 +129,12 @@ func (d *OpDebugger) buildDebugMessage(info debugInfo) {
 		d.builder.WriteByte(')')
 
 	case FontTableEntry:
+		fmt.Fprintf(&d.builder, "(name: ")
+		e.fontName.writeToString(&d.builder)
+
 		fmt.Fprintf(
 			&d.builder,
-			"(name: %s, index: %d, charset: %d, default fallback: %t)",
-			e.fontNameToken.text,
+			", index: %d, charset: %d, default fallback: %t)",
 			e.index,
 			e.charset,
 			e.defaultFallback,
@@ -141,9 +152,7 @@ func (d *OpDebugger) buildDebugMessage(info debugInfo) {
 
 	case Text:
 		fmt.Fprintf(&d.builder, ` (value: "`)
-		for _, t := range e.tokens {
-			d.builder.WriteString(t.text)
-		}
+		e.writeToString(&d.builder)
 		d.builder.WriteString(`")`)
 	default:
 	}

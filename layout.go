@@ -37,9 +37,17 @@ func BuildLayout(ops []Entity) []LayoutNode {
 				layout.pushFormatStackFrame()
 			case ControlGroupKindEnd:
 				layout.popFormatStackFrame()
+
+				if layout.currentNode != nil && layout.currentNode.parent != nil {
+					layout.currentNode = layout.currentNode.parent.(*LayoutParagraph)
+				} else {
+					layout.currentNode = nil
+				}
 			}
-		case FontTableEntry:
-			layout.storeFont(e)
+		case FontTable:
+			for _, fnt := range e.fonts {
+				layout.storeFont(fnt.(FontTableEntry))
+			}
 		case ColorTable:
 			for _, clr := range e.colors {
 				layout.storeColor(clr.(ColorTableEntry))
@@ -84,7 +92,7 @@ func (layout *Layout) clearFormatStack() {
 
 func (layout *Layout) storeFont(f FontTableEntry) {
 	layout.fontTable[f.index] = layoutFont{
-		name: f.fontNameToken.text,
+		name: f.fontName.toString(),
 	}
 }
 
@@ -112,11 +120,35 @@ func (layout *Layout) processFormat(t TextFormat) {
 		layout.pushFormat(layout.fontTable[t.arg])
 	case TextFormatFontSize:
 		layout.pushFormat(layoutFontSize(t.arg))
+	case TextFormatFontWeightBold:
+		layout.pushFormat(layoutFontWeightBold)
+	case TextFormatAlignCenter:
+		layout.pushFormat(layoutTextAlignCenter)
+	case TextFormatAlignJustify:
+		layout.pushFormat(layoutTextAlignJustify)
+	case TextFormatAlignRight:
+		layout.pushFormat(layoutTextAlignRight)
+	case TextFormatLeftIndent:
+		layout.pushFormat(layoutTextIndent{
+			dir:   -1,
+			unit:  MeasuringUnitTwip,
+			value: t.arg,
+		})
+	case TextFormatFirstIndent:
+		layout.pushFormat(layoutTextIndent{
+			dir:             -1,
+			unit:            MeasuringUnitTwip,
+			firstLineOffset: t.arg,
+		})
 
 	case TextFormatParagraphClear:
-		layout.clearFormatStack()
+		if layout.currentNode == nil {
+			layout.clearFormatStack()
+		}
 		layout.pushFormatStackFrame()
-		p := &LayoutParagraph{}
+		p := &LayoutParagraph{
+			parent: layout.currentNode,
+		}
 
 		if layout.currentNode != nil {
 			layout.currentNode.children = append(layout.currentNode.children, p)
@@ -127,7 +159,6 @@ func (layout *Layout) processFormat(t TextFormat) {
 
 	case TextFormatParagraphEnd:
 		layout.currentNode.format = layout.buildFormat()
-		layout.currentNode = nil
 	}
 }
 
@@ -137,11 +168,15 @@ func (layout *Layout) buildFormat() layoutFormat {
 	// Walk the format stack backward and skip any format that is already set in the bitmask
 	for i := len(layout.formatStack) - 1; i >= 0; i -= 1 {
 		f := layout.formatStack[i]
-		if format[f.kind()] != nil {
+		k := f.kind()
+		if format[k] != nil {
+			if checkLayoutFormatOpConcat(format[k]) {
+				format[k] = format[k].concat(f)
+			}
 			continue
 		}
 
-		format[f.kind()] = f
+		format[k] = f
 	}
 
 	return format
