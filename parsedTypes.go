@@ -76,6 +76,7 @@ var (
 const (
 	TextFormatColor TextFormatKind = iota
 	TextFormatItalic
+	TextFormatStrike
 	TextFormatFontIndex
 	TextFormatFontSize
 	TextFormatFontWeightBold
@@ -90,11 +91,12 @@ const (
 
 var (
 	textFormatKindLookup = map[string]TextFormatKind{
-		"cf": TextFormatColor,
-		"i":  TextFormatItalic,
-		"f":  TextFormatFontIndex,
-		"fs": TextFormatFontSize,
-		"b":  TextFormatFontWeightBold,
+		"cf":     TextFormatColor,
+		"i":      TextFormatItalic,
+		"strike": TextFormatStrike,
+		"f":      TextFormatFontIndex,
+		"fs":     TextFormatFontSize,
+		"b":      TextFormatFontWeightBold,
 
 		"qc": TextFormatAlignCenter,
 		"qj": TextFormatAlignJustify,
@@ -110,6 +112,7 @@ var (
 	textFormatKindStr = map[TextFormatKind]string{
 		TextFormatColor:          "Color",
 		TextFormatItalic:         "Italic",
+		TextFormatStrike:         "Strike",
 		TextFormatFontIndex:      "Font",
 		TextFormatFontSize:       "Font Size",
 		TextFormatFontWeightBold: "Font Bold",

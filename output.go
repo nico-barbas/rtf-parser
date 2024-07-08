@@ -67,6 +67,8 @@ func (builder *Builder) outputStyleCSS(format layoutFormat) string {
 			continue
 		}
 
+		terminateStyle := true
+
 		switch _f := f.(type) {
 		case layoutFont:
 			fmt.Fprintf(&builder.styleBuf, "font-family: %s", _f.name)
@@ -76,11 +78,13 @@ func (builder *Builder) outputStyleCSS(format layoutFormat) string {
 				if (byte(_f)&mask)>>i == 1 {
 					switch layoutTextStyleKind(i) {
 					case layoutTextStyleItalic:
-						fmt.Fprintf(&builder.styleBuf, "font-style: italic")
+						fmt.Fprintf(&builder.styleBuf, "font-style: italic;")
 					case layoutTextStyleStrike:
+						fmt.Fprintf(&builder.styleBuf, "text-decoration-line: line-through;")
 					}
 				}
 			}
+			terminateStyle = false
 		case layoutColor:
 			fmt.Fprintf(&builder.styleBuf, "color: rgba(%d, %d, %d, %.1f)", _f.r, _f.g, _f.b, float64(_f.a)/255)
 		case layoutFontSize:
@@ -99,9 +103,16 @@ func (builder *Builder) outputStyleCSS(format layoutFormat) string {
 				fmt.Fprintf(&builder.styleBuf, "text-indent: %dem", indentValue)
 			}
 		}
-		builder.styleBuf.WriteByte(';')
+
+		if terminateStyle {
+			builder.styleBuf.WriteByte(';')
+		}
 	}
 	builder.styleBuf.WriteString("\"")
 
 	return builder.styleBuf.String()
 }
+
+// func (builder *Builder) buildTextStyleCSS(f layoutTextStyle) {
+
+// }

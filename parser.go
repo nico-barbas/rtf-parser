@@ -126,18 +126,19 @@ func Parse(input string) ([]Entity, error) {
 		"alpha":    parseColorComponent,
 
 		// Text format words
-		"cf":   parseTextFormat,
-		"f":    parseTextFormat,
-		"fs":   parseTextFormat,
-		"li":   parseTextFormat,
-		"fi":   parseTextFormat,
-		"i":    parseTextFormatNoArg,
-		"pard": parseTextFormatNoArg,
-		"par":  parseTextFormatNoArg,
-		"b":    parseTextFormatNoArg,
-		"qc":   parseTextFormatNoArg,
-		"qj":   parseTextFormatNoArg,
-		"qr":   parseTextFormatNoArg,
+		"cf":     parseTextFormat,
+		"f":      parseTextFormat,
+		"fs":     parseTextFormat,
+		"li":     parseTextFormat,
+		"fi":     parseTextFormat,
+		"i":      parseTextFormatNoArg,
+		"strike": parseTextFormatNoArg,
+		"pard":   parseTextFormatNoArg,
+		"par":    parseTextFormatNoArg,
+		"b":      parseTextFormatNoArg,
+		"qc":     parseTextFormatNoArg,
+		"qj":     parseTextFormatNoArg,
+		"qr":     parseTextFormatNoArg,
 	}
 
 parseDocument:

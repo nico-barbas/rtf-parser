@@ -119,6 +119,9 @@ func (layout *Layout) processFormat(t TextFormat) {
 	case TextFormatItalic:
 		style := layoutTextStyle(1 << layoutTextStyleItalic)
 		layout.pushFormat(style)
+	case TextFormatStrike:
+		style := layoutTextStyle(1 << layoutTextStyleStrike)
+		layout.pushFormat(style)
 	case TextFormatFontIndex:
 		layout.pushFormat(layout.fontTable[t.arg])
 	case TextFormatFontSize:
