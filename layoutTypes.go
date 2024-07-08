@@ -54,12 +54,19 @@ func (t *LayoutText) getParent() LayoutNode {
 
 const (
 	layoutFormatColor layoutFormatKind = iota
+	layoutFormatTextStyle
 	layoutFormatFont
 	layoutFormatFontSize
 	layoutFormatFontWeight
 	layoutFormatTextAlign
 	layoutFormatTextIndent
 	layoutFormatMAX
+)
+
+const (
+	layoutTextStyleItalic layoutTextStyleKind = iota
+	layoutTextStyleStrike
+	layoutTextStyleMAX
 )
 
 const (
@@ -104,6 +111,10 @@ type (
 		r, g, b, a uint8
 	}
 
+	layoutTextStyleKind byte
+
+	layoutTextStyle byte
+
 	layoutFontSize int
 
 	layoutFontWeight int
@@ -130,6 +141,8 @@ func checkLayoutFormatOpConcat(op layoutFormatOp) (ok bool) {
 	// 	ok = false
 	// case layoutTextAlign:
 	// 	ok = false
+	case layoutTextStyle:
+		ok = true
 	case layoutTextIndent:
 		ok = true
 	default:
@@ -152,6 +165,14 @@ func (c layoutColor) kind() layoutFormatKind {
 
 func (c layoutColor) concat(other layoutFormatOp) layoutFormatOp {
 	return c
+}
+
+func (s layoutTextStyle) kind() layoutFormatKind {
+	return layoutFormatTextStyle
+}
+
+func (s layoutTextStyle) concat(other layoutFormatOp) layoutFormatOp {
+	return s | other.(layoutTextStyle)
 }
 
 func (f layoutFontSize) kind() layoutFormatKind {

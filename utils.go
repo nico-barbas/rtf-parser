@@ -39,3 +39,19 @@ func convertPoints(value int, to MeasuringUnit) (result int) {
 	}
 	return
 }
+
+// func accessBitUint8(val uint8, n uint8) bool {
+// 	var mask uint8 = 1 << n
+// 	return (val&mask)>>n == 1
+// }
+
+// func setBitUint8(val uint8, n uint8) uint8 {
+// 	var mask uint8 = 1 << n
+// 	return val | mask
+// }
+
+// func clearBitUint8(val uint8, n uint8) uint8 {
+// 	var mask uint8 = 1 << n
+// 	mask = ^mask
+// 	return val & mask
+// }

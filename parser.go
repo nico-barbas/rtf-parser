@@ -131,6 +131,7 @@ func Parse(input string) ([]Entity, error) {
 		"fs":   parseTextFormat,
 		"li":   parseTextFormat,
 		"fi":   parseTextFormat,
+		"i":    parseTextFormatNoArg,
 		"pard": parseTextFormatNoArg,
 		"par":  parseTextFormatNoArg,
 		"b":    parseTextFormatNoArg,

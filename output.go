@@ -70,6 +70,17 @@ func (builder *Builder) outputStyleCSS(format layoutFormat) string {
 		switch _f := f.(type) {
 		case layoutFont:
 			fmt.Fprintf(&builder.styleBuf, "font-family: %s", _f.name)
+		case layoutTextStyle:
+			for i := 0; i < int(layoutTextStyleMAX); i += 1 {
+				var mask byte = 1 << i
+				if (byte(_f)&mask)>>i == 1 {
+					switch layoutTextStyleKind(i) {
+					case layoutTextStyleItalic:
+						fmt.Fprintf(&builder.styleBuf, "font-style: italic")
+					case layoutTextStyleStrike:
+					}
+				}
+			}
 		case layoutColor:
 			fmt.Fprintf(&builder.styleBuf, "color: rgba(%d, %d, %d, %.1f)", _f.r, _f.g, _f.b, float64(_f.a)/255)
 		case layoutFontSize:
